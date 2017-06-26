@@ -13,6 +13,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.ByteArrayBuffer;
+import org.apache.http.util.EntityUtils;
 
 import java.io.EOFException;
 import java.io.InputStream;
@@ -86,8 +87,9 @@ public class HttpClientDownloader extends AbstractDownloader {
 	 * @return
 	 */
 	public String getContent(String nCharset, CloseableHttpResponse httpResponse){
+		HttpEntity entity = null;
 		try {
-			HttpEntity entity = httpResponse.getEntity();
+			entity = httpResponse.getEntity();
 			//获得响应流
 			InputStream is = entity.getContent();
 			
@@ -101,22 +103,34 @@ public class HttpClientDownloader extends AbstractDownloader {
 			} catch (EOFException e) {
 			}
 //			使用CheckEncoding来识别编码
-			String charset = checkEncoding.getEncoding(is);
-			
-//			如果上一步没有获得字符编码。那直接从网页源码中的meta标签中更具正则匹配
-			if(!charset.toLowerCase().contains("utf") && !charset.toLowerCase().contains("gb")){
-				charset = getCharsetFromMetaTag(buffer);
-				if(charset == null || "".equals(charset.trim())){
-					charset = getCharsetFromResponeTitle(entity);
+			String charset = null;
+			if(nCharset != null){
+				charset = nCharset;
+			}else{
+				charset = checkEncoding.getEncoding(is);
+				//			如果上一步没有获得字符编码。那直接从网页源码中的meta标签中更具正则匹配
+				if(!charset.toLowerCase().contains("utf") && !charset.toLowerCase().contains("gb")){
+					charset = getCharsetFromMetaTag(buffer);
 					if(charset == null || "".equals(charset.trim())){
-						//强制编码
-						charset =nCharset;
+						charset = getCharsetFromResponeTitle(entity);
+						if(charset == null || "".equals(charset.trim())){
+							//强制编码
+							charset = "UTF-8";
+						}
 					}
 				}
 			}
 			return new String(buffer.toByteArray(), charset);
 		} catch (Exception e) {
 			e.printStackTrace();
+		}finally{
+			if(entity != null){
+				try{
+					EntityUtils.consume(entity);
+				}catch (Exception e){
+					e.printStackTrace();
+				}
+			}
 		}
 		return null;
 	}
@@ -245,15 +259,15 @@ public class HttpClientDownloader extends AbstractDownloader {
 			HttpUriRequest httpUriRequest = getHttpUriRequest(request, site, headers,host.getHost(),host.getPort());
 //			执行请求获取相应状态码
 			httpResponse = getHttpClient(site).execute(httpUriRequest);
-			if(isDownloader(httpResponse)){
-				System.out.println("链接：" + request.getUrl() + " 是下载链接...");
-				return null;
-			}
+//			if(isDownloader(httpResponse)){
+//				System.out.println("链接：" + request.getUrl() + " 是下载链接...");
+//				return null;
+//			}
 			statusCode = httpResponse.getStatusLine().getStatusCode();
 			System.out.println(statusCode);
 //			将相应状态码放入到请求对象集合中
 			request.setStatusCode(statusCode);
-			if(statusCode == STATUS_CODE_ACCEPT){
+			if(statusCode == STATUS_CODE_ACCEPT || statusCode == 521){
 				return handlerResponse(site,request,charset,httpResponse);
 			}else if((statusCode == HttpStatus.SC_MOVED_TEMPORARILY) ||
 					(statusCode == HttpStatus.SC_MOVED_PERMANENTLY) ||

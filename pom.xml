@@ -22,4 +22,18 @@
             <version>4.12</version>
         </dependency>
     </dependencies>
+
+    <!--记得修改packaging为jar-->
+    <distributionManagement>
+        <repository>
+            <id>fonova-releases</id>
+            <name>Fonova Release Repositories</name>
+            <url>http://tools.stargazer.fonova.cn:8081/nexus/content/repositories/fonova-release/</url>
+        </repository>
+        <snapshotRepository>
+            <id>fonova-snapshots</id>
+            <name>Fonova Snapshot Repository</name>
+            <url>http://tools.stargazer.fonova.cn:8081/nexus/content/repositories/fonova-snapshot/</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
