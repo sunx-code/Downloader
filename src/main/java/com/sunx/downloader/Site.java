@@ -16,9 +16,9 @@ public class Site {
     //	请求队列
     private ConcurrentLinkedQueue<String> reqs = new ConcurrentLinkedQueue<String>();
     //	cookies
-    private Map<String,String> cookies;
+    private Map<String,String> cookies = new HashMap<String, String>();
     //	请求头
-    private Map<String,String> header;
+    private Map<String,String> header = new HashMap<String, String>();
     //	站点抓取间隔
     private long sleepTime = 10;
     //	最近一次站点的请求时间

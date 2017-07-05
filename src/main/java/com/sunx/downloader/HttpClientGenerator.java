@@ -9,6 +9,7 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -18,21 +19,46 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.protocol.HttpContext;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Map;
 
 public class HttpClientGenerator {
 	private PoolingHttpClientConnectionManager manager = null;
-	
+
+	private static X509TrustManager tm = new X509TrustManager() {
+		public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {}
+		public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {}
+		public X509Certificate[] getAcceptedIssuers() {return null;}
+	};
 	/**
 	 * 创建对象
 	 */
 	public HttpClientGenerator(){
+		SSLContext ctx = null;
+		try {
+			ctx = SSLContext.getInstance("TLS");
+			ctx.init(null, new TrustManager[] { tm }, null);
+		} catch (KeyManagementException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(ctx,
+				NoopHostnameVerifier.INSTANCE);
+
 //		注册链接请求类型
 		Registry<ConnectionSocketFactory> reg = RegistryBuilder.<ConnectionSocketFactory>create()
 				.register("http", PlainConnectionSocketFactory.INSTANCE)
+				.register("https",sslConnectionFactory)
 //				.register("https", SSLConnectionSocketFactory.getSocketFactory())
-				.register("https", SSLConnectionSocketFactory.getSystemSocketFactory())
+//				.register("https", SSLConnectionSocketFactory.getSystemSocketFactory())
 				.build();
 //		给链接池绑定注册类型
 		manager = new PoolingHttpClientConnectionManager(reg);
@@ -79,7 +105,8 @@ public class HttpClientGenerator {
 			});
 		}
 //		这是socket参数-->保持连接，是否延长
-		SocketConfig socketConfig = SocketConfig.custom().setSoKeepAlive(true)
+		SocketConfig socketConfig = SocketConfig.custom()
+//				.setSoKeepAlive(true)
 				.setTcpNoDelay(true).build();
 		httpClientBuilder.setDefaultSocketConfig(socketConfig);
 		generateCookie(httpClientBuilder,site);

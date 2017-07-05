@@ -65,6 +65,14 @@ public interface Downloader {
     public String downloader(Request request,Site site);
 
     /**
+     * 给定请求和站点的封装对象,进行下载数据
+     * @param request
+     * @param site
+     * @return
+     */
+    public String downloader(Request request,Site site,boolean flag);
+
+    /**
      * 给定请求和站点，以及代理进行下载数据
      * @param request
      * @param site

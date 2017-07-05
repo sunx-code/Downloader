@@ -77,7 +77,7 @@ public class HttpClientDownloader extends AbstractDownloader {
 			save(site,httpResponse);
 			site.setIsSave(false);
 		}
-		System.out.println(Thread.currentThread().getName() + ",下载完成：" + request.getUrl());
+		System.out.println(request.getUrl() + " -> " + request.getStatusCode());
 		return content;
 	}
 	/**
@@ -229,12 +229,16 @@ public class HttpClientDownloader extends AbstractDownloader {
 					requestBuilder.addParameter(new BasicNameValuePair(entry.getKey(),entry.getValue()));
 				}
 			}
+            return requestBuilder;
+        }else if(method == Method.JSON){
+			RequestBuilder requestBuilder = RequestBuilder.post();
+        	//处理post提价json数据的形式
 			if(request.getSrt() != null){
 				StringEntity entity = new StringEntity(request.getSrt(),ContentType.APPLICATION_JSON);
 				requestBuilder.setEntity(entity);
 			}
-            return requestBuilder;
-        }
+			return requestBuilder;
+		}
         throw new IllegalArgumentException("Illegal HTTP Method " + method);
 	}
 
@@ -242,8 +246,12 @@ public class HttpClientDownloader extends AbstractDownloader {
 		httpClientGenerator.setPoolSize(threadNum);
 	}
 
-	public String downloader(Request request, Site site, Host host) {
-//		创建请求头以及编码格式参数
+	public String downloader(Request request,Site site,boolean flag){
+		return downloader(request,site,new Host(null,-1),flag);
+	}
+
+	public String downloader(Request request,Site site,Host host,boolean flag){
+		//		创建请求头以及编码格式参数
 		String charset = null;
 		Map<String,String> headers = null;
 //		初始化参数
@@ -259,17 +267,12 @@ public class HttpClientDownloader extends AbstractDownloader {
 			HttpUriRequest httpUriRequest = getHttpUriRequest(request, site, headers,host.getHost(),host.getPort());
 //			执行请求获取相应状态码
 			httpResponse = getHttpClient(site).execute(httpUriRequest);
-//			if(isDownloader(httpResponse)){
-//				System.out.println("链接：" + request.getUrl() + " 是下载链接...");
-//				return null;
-//			}
 			statusCode = httpResponse.getStatusLine().getStatusCode();
-			System.out.println(statusCode);
 //			将相应状态码放入到请求对象集合中
 			request.setStatusCode(statusCode);
 			if(statusCode == STATUS_CODE_ACCEPT || statusCode == 521){
 				return handlerResponse(site,request,charset,httpResponse);
-			}else if((statusCode == HttpStatus.SC_MOVED_TEMPORARILY) ||
+			}else if(flag && (statusCode == HttpStatus.SC_MOVED_TEMPORARILY) ||
 					(statusCode == HttpStatus.SC_MOVED_PERMANENTLY) ||
 					(statusCode == HttpStatus.SC_SEE_OTHER) ||
 					(statusCode == HttpStatus.SC_TEMPORARY_REDIRECT)){
@@ -297,6 +300,10 @@ public class HttpClientDownloader extends AbstractDownloader {
 			}
 		}
 		return null;
+	}
+
+	public String downloader(Request request, Site site, Host host) {
+		return downloader(request,site,host,true);
 	}
 
 	public boolean isDownloader(CloseableHttpResponse httpResponse){
